@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <title>Add User</title>
+</head>
+<body>
+<h2>Add New User</h2>
+
+<form th:method="post" th:action="@{/users}" th:object="${user}" id="userForm" onsubmit="return validateRoles()">
+  <label for="username">Username:</label>
+  <input type="text" th:field="*{username}" id="username" required />
+  <br/><br/>
+
+  <label for="password">Password:</label>
+  <input type="password" th:field="*{password}" id="password" required />
+  <br/><br/>
+
+  <label>Roles:</label><br/>
+  <th:block th:each="role : ${allRoles}">
+    <input type="checkbox"
+           th:field="*{roles}"
+           th:value="${role.id}"
+           th:id="${'role_' + role.id}"
+           class="role-checkbox" />
+    <label th:for="${'role_' + role.id}"
+           th:text="${#strings.capitalize(#strings.toLowerCase(role.name.substring(5)))}">RoleName</label><br/>
+  </th:block>
+  <br/>
+
+  <input type="submit" value="Add User"/>
+</form>
+
+<form th:action="@{/users}" method="get" style="display: inline;">
+  <button type="submit">Back to Users List</button>
+</form>
+
+<script>
+  function validateRoles() {
+    const checkboxes = document.querySelectorAll('.role-checkbox');
+    const checkedOne = Array.from(checkboxes).some(checkbox => checkbox.checked);
+    if (!checkedOne) {
+      alert('Please select at least one role!');
+      return false;
+    }
+    return true;
+  }
+</script>
+
+</body>
+</html>

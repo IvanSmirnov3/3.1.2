@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Update User</title>
+</head>
+<body>
+<h2>Update User</h2>
+
+<form th:method="post" th:action="@{/users/{id}(id=${user.id})}" th:object="${user}">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+    <input type="hidden" th:field="*{id}" />
+
+    <label for="username">Username:</label>
+    <input type="text" th:field="*{username}" id="username" required /><br/><br/>
+
+    <label for="password">Password:</label>
+    <input type="password" name="password" id="password" placeholder="Leave blank to keep current password" /><br/><br/>
+
+    <label>Roles:</label><br/>
+    <input type="checkbox" name="roleNames" value="ROLE_USER"
+           th:checked="${userRoleNames != null and userRoleNames.contains('ROLE_USER')}" /> User<br/>
+
+    <input type="checkbox" name="roleNames" value="ROLE_ADMIN"
+           th:checked="${userRoleNames != null and userRoleNames.contains('ROLE_ADMIN')}" /> Admin<br/><br/>
+
+    <input type="submit" value="Update User"/>
+</form>
+
+<form th:action="@{/users}" method="get" style="display:inline;">
+    <button type="submit">Back to Users List</button>
+</form>
+
+</body>
+</html>

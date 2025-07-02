@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Список пользователей</title>
+  <meta charset="UTF-8"/>
+
+  <!-- CSRF защита -->
+  <meta name="_csrf" th:content="${_csrf.token}"/>
+  <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+      const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
+      window.deleteUser = function (userId) {
+        if (!confirm('Вы уверены, что хотите удалить пользователя?')) return;
+
+        fetch(`/users/${userId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            [csrfHeader]: csrfToken
+          }
+        })
+                .then(response => {
+                  if (response.ok) {
+                    const row = document.querySelector(`tr[data-user-id='${userId}']`);
+                    if (row) row.remove();
+                  } else {
+                    alert('Ошибка при удалении пользователя');
+                  }
+                })
+                .catch(error => {
+                  console.error('Ошибка:', error);
+                  alert('Ошибка при удалении пользователя');
+                });
+      };
+    });
+  </script>
+</head>
+<body>
+
+<h1>Список пользователей</h1>
+
+<div th:if="${#lists.isEmpty(users)}">
+  <p>Нет пользователей.</p>
+</div>
+
+<div th:unless="${#lists.isEmpty(users)}">
+  <table border="1" cellpadding="5" cellspacing="0">
+    <thead>
+    <tr>
+      <th>ID</th>
+      <th>Имя пользователя</th>
+      <th>Пароль</th>
+      <th>Роли</th>
+      <th>Действия</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="user : ${users}" th:attr="data-user-id=${user.id}">
+      <td th:text="${user.id}">1</td>
+      <td th:text="${user.username}">username</td>
+      <td th:text="${user.password}">password</td>
+      <td>
+          <span th:each="role, roleStat : ${user.roles}">
+            <span th:text="${#strings.capitalize(#strings.toLowerCase(role.name.substring(5)))}"></span>
+            <span th:if="${!roleStat.last}">, </span>
+          </span>
+      </td>
+      <td>
+        <!-- Редактирование -->
+        <form th:action="@{/updateUser}" method="post" style="display:inline;">
+          <input type="hidden" name="id" th:value="${user.id}" />
+          <button type="submit">Редактировать</button>
+        </form>
+
+        <button type="button" th:onclick="'deleteUser(' + ${user.id} + ')'">Удалить</button>
+      </td>
+    </tr>
+    </tbody>
+  </table>
+</div>
+
+<br/>
+
+<form th:action="@{/addUser}" method="get" style="display:inline;">
+  <button type="submit">Добавить нового пользователя</button>
+</form>
+
+<form th:action="@{/logout}" method="post">
+  <button type="submit">Logout</button>
+</form>
+
+</body>
+</html>
