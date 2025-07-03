@@ -16,7 +16,7 @@
       window.deleteUser = function (userId) {
         if (!confirm('Вы уверены, что хотите удалить пользователя?')) return;
 
-        fetch(`/users/${userId}`, {
+        fetch(`/admin/users/${userId}`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
@@ -71,7 +71,7 @@
       </td>
       <td>
         <!-- Редактирование -->
-        <form th:action="@{/updateUser}" method="post" style="display:inline;">
+        <form th:action="@{/admin/updateUser}" method="post" style="display:inline;">
           <input type="hidden" name="id" th:value="${user.id}" />
           <button type="submit">Редактировать</button>
         </form>
@@ -85,7 +85,7 @@
 
 <br/>
 
-<form th:action="@{/addUser}" method="get" style="display:inline;">
+<form th:action="@{/admin/addUser}" method="get" style="display:inline;">
   <button type="submit">Добавить нового пользователя</button>
 </form>
 

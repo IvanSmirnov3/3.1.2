@@ -7,7 +7,7 @@
 <body>
 <h2>Add New User</h2>
 
-<form th:method="post" th:action="@{/users}" th:object="${user}" id="userForm" onsubmit="return validateRoles()">
+<form th:method="post" th:action="@{/admin/users}" th:object="${user}" id="userForm" onsubmit="return validateRoles()">
   <label for="username">Username:</label>
   <input type="text" th:field="*{username}" id="username" required />
   <br/><br/>
@@ -31,7 +31,7 @@
   <input type="submit" value="Add User"/>
 </form>
 
-<form th:action="@{/users}" method="get" style="display: inline;">
+<form th:action="@{/admin/users}" method="get" style="display: inline;">
   <button type="submit">Back to Users List</button>
 </form>
 

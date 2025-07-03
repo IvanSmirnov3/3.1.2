@@ -12,15 +12,13 @@
 <h2>Your Details:</h2>
 <ul>
     <li>Username: <span th:text="${user.username}">username</span></li>
-
 </ul>
-
 
 <form th:action="@{/logout}" method="post">
     <button type="submit">Logout</button>
 </form>
 
-<a th:href="@{/users}">
+<a th:href="@{/admin/users}">
     <button type="button">Go to Users List</button>
 </a>
 

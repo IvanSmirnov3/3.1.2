@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.BindingResult;
 import ru.kata.spring.boot_security.demo.model.Role;
 import ru.kata.spring.boot_security.demo.model.User;
 import ru.kata.spring.boot_security.demo.repository.UserRepository;
@@ -17,12 +18,12 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
-    private final RoleService roleService;
+    private final RoleServiceImpl roleService;
 
     @Autowired
     public UserServiceImpl(UserRepository userRepository,
                            BCryptPasswordEncoder bCryptPasswordEncoder,
-                           RoleService roleService) {
+                           RoleServiceImpl roleService) {
         this.userRepository = userRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.roleService = roleService;
@@ -72,38 +73,34 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         return userRepository.findAll();
     }
 
-    @Transactional
-    public boolean saveUser(User user) {
-        if (userRepository.findByUsername(user.getUsername()) != null) {
-            return false;
-        }
-        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
-            user.setPassword(bCryptPasswordEncoder.encode(user.getPassword()));
-        }
-        userRepository.save(user);
-        return true;
-    }
-
     public User findUserById(Long id) {
         return userRepository.findById(id).orElse(null);
     }
 
-
-
     @Transactional
-    public boolean updateUser(Long id, User formUser, List<String> roleNames, String rawPassword) {
+    public ResultView updateUserView(Long id,
+                                     User formUser,
+                                     List<String> roleNames,
+                                     String rawPassword,
+                                     BindingResult result) {
+
+        if (result.hasErrors()) {
+            return new ResultView("updateUser")
+                    .add("allRoles", roleService.findAll());
+        }
+
         Optional<User> optionalUser = userRepository.findById(id);
         if (optionalUser.isEmpty()) {
-            return false;
+            return new ResultView("updateUser")
+                    .add("error", "User not found or update failed")
+                    .add("allRoles", roleService.findAll());
         }
 
         User existingUser = optionalUser.get();
         existingUser.setUsername(formUser.getUsername());
 
         if (rawPassword != null && !rawPassword.isEmpty()) {
-            if (!bCryptPasswordEncoder.matches(rawPassword, existingUser.getPassword())) {
-                existingUser.setPassword(bCryptPasswordEncoder.encode(rawPassword));
-            }
+            existingUser.setPassword(bCryptPasswordEncoder.encode(rawPassword));
         }
 
         if (roleNames != null) {
@@ -115,6 +112,48 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         }
 
         userRepository.save(existingUser);
-        return true;
+        return new ResultView("redirect:/admin/users");
     }
+
+    public ResultView createUserView(User user, List<Long> roleIds) {
+        if (userRepository.findByUsername(user.getUsername()) != null) {
+            return new ResultView("addUser")
+                    .add("error", "Username already exists")
+                    .add("allRoles", roleService.findAll());
+        }
+
+        if (roleIds != null) {
+            Set<Role> roles = roleIds.stream()
+                    .map(roleService::findById)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            user.setRoles(roles);
+        }
+
+        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+            user.setPassword(bCryptPasswordEncoder.encode(user.getPassword()));
+        }
+
+        userRepository.save(user);
+        return new ResultView("redirect:/admin/users");
+    }
+
+    public ResultView getUpdateUserFormView(Long id) {
+        User user = userRepository.findById(id).orElse(null);
+        if (user == null) {
+            return new ResultView("admin")
+                    .add("error", "Пользователь не найден");
+        }
+
+        Set<String> roleNames = user.getRoles()
+                .stream()
+                .map(Role::getName)
+                .collect(Collectors.toSet());
+
+        return new ResultView("updateUser")
+                .add("user", user)
+                .add("userRoleNames", roleNames)
+                .add("allRoles", roleService.findAll());
+    }
+
 }
