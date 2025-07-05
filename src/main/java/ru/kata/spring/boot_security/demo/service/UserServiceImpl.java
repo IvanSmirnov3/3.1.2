@@ -1,71 +1,43 @@
 package ru.kata.spring.boot_security.demo.service;
 
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.*;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import ru.kata.spring.boot_security.demo.model.Role;
 import ru.kata.spring.boot_security.demo.model.User;
 import ru.kata.spring.boot_security.demo.repository.UserRepository;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class UserServiceImpl implements UserService, UserDetailsService {
 
     private final UserRepository userRepository;
-    private final BCryptPasswordEncoder bCryptPasswordEncoder;
-    private final RoleServiceImpl roleService;
+    private final RoleService roleService;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
     public UserServiceImpl(UserRepository userRepository,
-                           BCryptPasswordEncoder bCryptPasswordEncoder,
-                           RoleServiceImpl roleService) {
+                           RoleService roleService,
+                           PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
-        this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.roleService = roleService;
-    }
-
-    @Override
-    public boolean deleteByIdUser(Long userId) {
-        Optional<User> user = userRepository.findById(userId);
-        if (user.isPresent()) {
-            userRepository.delete(user.get());
-            return true;
-        }
-        return false;
-    }
-
-    @Override
-    public boolean createUser(User user, List<Long> roleIds) {
-        if (userRepository.findByUsername(user.getUsername()) != null) {
-            return false;
-        }
-
-        if (roleIds != null) {
-            Set<Role> roles = roleIds.stream()
-                    .map(roleService::findById)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-            user.setRoles(roles);
-        }
-
-        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
-            user.setPassword(bCryptPasswordEncoder.encode(user.getPassword()));
-        }
-
-        userRepository.save(user);
-        return true;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username);
-        if (user == null) throw new UsernameNotFoundException("User not found");
-        return user;
+        Optional<User> userOptional = userRepository.findByUsername(username);
+        return userOptional.orElseThrow(() ->
+                new UsernameNotFoundException("User not found with username: " + username));
     }
 
     @Override
@@ -73,87 +45,52 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         return userRepository.findAll();
     }
 
-    public User findUserById(Long id) {
-        return userRepository.findById(id).orElse(null);
+    @Override
+    public void deleteUser(Long id) {
+        userRepository.deleteById(id);
     }
 
-    @Transactional
-    public ResultView updateUserView(Long id,
-                                     User formUser,
-                                     List<String> roleNames,
-                                     String rawPassword,
-                                     BindingResult result) {
+    @Override
+    public void createUser(User user, List<Long> roleIds) {
+        Set<Role> roles = new HashSet<>();
+        if (roleIds != null) {
+            roles.addAll(roleService.getRolesByIds(roleIds));
+        }
+        user.setRoles(roles);
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        userRepository.save(user);
+    }
 
+    @Override
+    public User findById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    @Override
+    public boolean updateUserWithValidation(Long id, User formUser, List<String> roleNames, String rawPassword, BindingResult result, Model model) {
         if (result.hasErrors()) {
-            return new ResultView("updateUser")
-                    .add("allRoles", roleService.findAll());
+            model.addAttribute("user", formUser);
+            model.addAttribute("allRoles", roleService.findAll());
+            model.addAttribute("errors", result.getAllErrors());
+            return false;
         }
 
-        Optional<User> optionalUser = userRepository.findById(id);
-        if (optionalUser.isEmpty()) {
-            return new ResultView("updateUser")
-                    .add("error", "User not found or update failed")
-                    .add("allRoles", roleService.findAll());
-        }
+        User userFromDb = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        User existingUser = optionalUser.get();
-        existingUser.setUsername(formUser.getUsername());
+        userFromDb.setUsername(formUser.getUsername());
+
+        if (roleNames != null && !roleNames.isEmpty()) {
+            Set<Role> roles = new HashSet<>(roleService.getRolesByNames(roleNames));
+            userFromDb.setRoles(roles);
+        }
 
         if (rawPassword != null && !rawPassword.isEmpty()) {
-            existingUser.setPassword(bCryptPasswordEncoder.encode(rawPassword));
+            userFromDb.setPassword(passwordEncoder.encode(rawPassword));
         }
 
-        if (roleNames != null) {
-            Set<Role> roles = roleNames.stream()
-                    .map(roleService::findByName)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-            existingUser.setRoles(roles);
-        }
-
-        userRepository.save(existingUser);
-        return new ResultView("redirect:/admin/users");
+        userRepository.save(userFromDb);
+        return true;
     }
-
-    public ResultView createUserView(User user, List<Long> roleIds) {
-        if (userRepository.findByUsername(user.getUsername()) != null) {
-            return new ResultView("addUser")
-                    .add("error", "Username already exists")
-                    .add("allRoles", roleService.findAll());
-        }
-
-        if (roleIds != null) {
-            Set<Role> roles = roleIds.stream()
-                    .map(roleService::findById)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-            user.setRoles(roles);
-        }
-
-        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
-            user.setPassword(bCryptPasswordEncoder.encode(user.getPassword()));
-        }
-
-        userRepository.save(user);
-        return new ResultView("redirect:/admin/users");
-    }
-
-    public ResultView getUpdateUserFormView(Long id) {
-        User user = userRepository.findById(id).orElse(null);
-        if (user == null) {
-            return new ResultView("admin")
-                    .add("error", "Пользователь не найден");
-        }
-
-        Set<String> roleNames = user.getRoles()
-                .stream()
-                .map(Role::getName)
-                .collect(Collectors.toSet());
-
-        return new ResultView("updateUser")
-                .add("user", user)
-                .add("userRoleNames", roleNames)
-                .add("allRoles", roleService.findAll());
-    }
-
 }

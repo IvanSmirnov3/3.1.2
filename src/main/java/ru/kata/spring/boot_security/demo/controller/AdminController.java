@@ -1,20 +1,16 @@
 package ru.kata.spring.boot_security.demo.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
-import ru.kata.spring.boot_security.demo.model.Role;
 import ru.kata.spring.boot_security.demo.model.User;
-import ru.kata.spring.boot_security.demo.service.ResultView;
 import ru.kata.spring.boot_security.demo.service.RoleService;
 import ru.kata.spring.boot_security.demo.service.UserService;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
 
 @Controller
 @RequestMapping("/admin")
@@ -37,15 +33,15 @@ public class AdminController {
     }
 
     @GetMapping
-    public String userPage(@AuthenticationPrincipal User user, Model model) {
+    public String userPageOpen(@AuthenticationPrincipal User user, Model model) {
         model.addAttribute("user", user);
         return "admin";
     }
 
     @DeleteMapping("/users/{id}")
-    public ResponseEntity<String> deleteUser(@PathVariable Long id) {
-        boolean success = userService.deleteByIdUser(id);
-        return success ? ResponseEntity.ok("User deleted") : ResponseEntity.notFound().build();
+    public String deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return "redirect:/admin/users";
     }
 
     @GetMapping("/addUser")
@@ -57,21 +53,18 @@ public class AdminController {
 
     @PostMapping("/users")
     public String createUser(@ModelAttribute User user,
-                             @RequestParam(value = "roles", required = false) List<Long> roleIds,
-                             Model model) {
-        ResultView resultView = userService.createUserView(user, roleIds);
-        model.addAllAttributes(resultView.getModelAttributes());
-        return resultView.getViewName();
+                             @RequestParam(value = "roles", required = false) List<Long> roleIds) {
+        userService.createUser(user, roleIds);
+        return "redirect:/admin/users";
     }
-
 
     @PostMapping("/updateUser")
     public String showUpdateUserForm(@RequestParam("id") long id, Model model) {
-        ResultView resultView = userService.getUpdateUserFormView(id);
-        model.addAllAttributes(resultView.getModelAttributes());
-        return resultView.getViewName();
+        User user = userService.findById(id);
+        model.addAttribute("user", user);
+        model.addAttribute("allRoles", roleService.findAll());
+        return "updateUser";
     }
-
 
     @PostMapping("/users/{id}")
     public String updateUser(@PathVariable("id") Long id,
@@ -81,9 +74,7 @@ public class AdminController {
                              BindingResult result,
                              Model model) {
 
-        ResultView rv = userService.updateUserView(id, formUser, roleNames, rawPassword, result);
-        model.addAllAttributes(rv.getModelAttributes());
-        return rv.getViewName();
+        boolean success = userService.updateUserWithValidation(id, formUser, roleNames, rawPassword, result, model);
+        return success ? "redirect:/admin/users" : "updateUser";
     }
-
 }

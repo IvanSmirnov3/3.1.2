@@ -3,41 +3,6 @@
 <head>
   <title>Список пользователей</title>
   <meta charset="UTF-8"/>
-
-  <!-- CSRF защита -->
-  <meta name="_csrf" th:content="${_csrf.token}"/>
-  <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
-      const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
-
-      window.deleteUser = function (userId) {
-        if (!confirm('Вы уверены, что хотите удалить пользователя?')) return;
-
-        fetch(`/admin/users/${userId}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            [csrfHeader]: csrfToken
-          }
-        })
-                .then(response => {
-                  if (response.ok) {
-                    const row = document.querySelector(`tr[data-user-id='${userId}']`);
-                    if (row) row.remove();
-                  } else {
-                    alert('Ошибка при удалении пользователя');
-                  }
-                })
-                .catch(error => {
-                  console.error('Ошибка:', error);
-                  alert('Ошибка при удалении пользователя');
-                });
-      };
-    });
-  </script>
 </head>
 <body>
 
@@ -76,7 +41,11 @@
           <button type="submit">Редактировать</button>
         </form>
 
-        <button type="button" th:onclick="'deleteUser(' + ${user.id} + ')'">Удалить</button>
+        <!-- Удаление через POST с _method=delete -->
+        <form th:action="@{/admin/users/{id}(id=${user.id})}" method="post" style="display:inline;">
+          <input type="hidden" name="_method" value="delete" />
+          <button type="submit" onclick="return confirm('Вы уверены, что хотите удалить пользователя?');">Удалить</button>
+        </form>
       </td>
     </tr>
     </tbody>
