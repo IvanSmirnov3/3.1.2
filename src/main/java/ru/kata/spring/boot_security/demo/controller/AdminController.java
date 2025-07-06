@@ -74,7 +74,7 @@ public class AdminController {
                              BindingResult result,
                              Model model) {
 
-        boolean success = userService.updateUserWithValidation(id, formUser, roleNames, rawPassword, result, model);
+        boolean success = userService.updateUser(id, formUser, roleNames, rawPassword, result, model);
         return success ? "redirect:/admin/users" : "updateUser";
     }
 }

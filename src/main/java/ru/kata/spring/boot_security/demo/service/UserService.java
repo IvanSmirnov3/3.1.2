@@ -11,5 +11,5 @@ public interface UserService {
     void deleteUser(Long id);
     void createUser(User user, List<Long> roleIds);
     User findById(Long id);
-    boolean updateUserWithValidation(Long id, User formUser, List<String> roleNames, String rawPassword, BindingResult result, Model model);
+    boolean updateUser(Long id, User formUser, List<String> roleNames, String rawPassword, BindingResult result, Model model);
 }

@@ -68,7 +68,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public boolean updateUserWithValidation(Long id, User formUser, List<String> roleNames, String rawPassword, BindingResult result, Model model) {
+    public boolean updateUser(Long id, User formUser, List<String> roleNames, String rawPassword, BindingResult result, Model model) {
         if (result.hasErrors()) {
             model.addAttribute("user", formUser);
             model.addAttribute("allRoles", roleService.findAll());
